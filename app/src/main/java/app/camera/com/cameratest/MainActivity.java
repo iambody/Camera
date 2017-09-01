@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -21,6 +22,11 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.xutils.http.RequestParams;
+import org.xutils.x;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -120,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         image.setImageBitmap(nbmp2);
         //****************
         hsh.addView(image);
-        findFace(nbmp2,bitmaps.size(),testHandler);
+        findFace(nbmp2, bitmaps.size(), testHandler);
 
     }
 
@@ -243,9 +249,10 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                 //返回识别的人脸数
                 int faceCount = new FaceDetector(bmp.getWidth(), bmp.getHeight(), MAX_FACES).findFaces(bmp, faces);
                 bmp.recycle();
-                Message message=new Message();
-                message.what=faceCount;
-                message.arg1=postion;
+                Message message = new Message();
+                message.what = faceCount;
+                message.arg1 = postion;
+                message.obj = bitmap;
                 handler.sendMessage(message);
 
             }
@@ -255,44 +262,173 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     }
 
-Handler testHandler=new Handler(){
-    @Override
-    public void handleMessage(Message msg) {
-     int postion=   msg.arg1;
-        switch (msg.what){
-            case 0:
-                Toast.makeText(MainActivity.this, postion+"请对准摄像头！！！", Toast.LENGTH_LONG).show();
-                break;
-            case 1:
-                Toast.makeText(MainActivity.this, postion+"已经对准摄像头！！！", Toast.LENGTH_LONG).show();
-                break;
-        }
-        super.handleMessage(msg);
-    }
-};
-    //    @Override
-//    public void onPreviewFrame(byte[] data, Camera camera) {
-////生成 bitmap
-//        Camera.Size size = camera.getParameters().getPreviewSize();
-//        try {
-//            YuvImage image = new YuvImage(data, ImageFormat.NV21, size.width, size.height, null);
-//            if (image != null) {
-//                ByteArrayOutputStream stream = new ByteArrayOutputStream();
-//                image.compressToJpeg(new Rect(0, 0, size.width, size.height), 80, stream);
-//
-//                Bitmap bmp = BitmapFactory.decodeByteArray(stream.toByteArray(), 0, stream.size());
-//
-//                //**********************
-//                //因为图片会放生旋转，因此要对图片进行旋转到和手机在一个方向上
-//                rotateMyBitmap(bmp);
-//                //**********************************
-//
-//                stream.close();
-//            }
-//        } catch (Exception ex) {
-//            Log.e("Sys", "Error:" + ex.getMessage());
-//        }
-//        Log.i("camera444444", "previewFrame调用");
-//    }
+    Handler testHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            int postion = msg.arg1;
+            Bitmap bitmap = (Bitmap) msg.obj;
+            switch (msg.what) {
+                case 0:
+                    Toast.makeText(MainActivity.this, postion + "请对准摄像头！！！", Toast.LENGTH_LONG).show();
+                    break;
+                case 1:
+                    Toast.makeText(MainActivity.this, postion + "已经对准摄像头！！！", Toast.LENGTH_LONG).show();
 
+
+                    uploadIv(bitmap, postion + "postion.jpg");
+                    break;
+            }
+            super.handleMessage(msg);
+        }
+    };
+
+    /**
+     * 开始上传帧图片
+     */
+    public void uploadIv(final Bitmap bitmap, final String name) {
+        new Thread() {
+            @Override
+            public void run() {
+                super.run();
+                String paths = DownloadUtils.postObject(bitmap, "face/", name);
+                if (!TextUtils.isEmpty(paths)) {
+                    Log.i("isiissis", name + "上传成功" + paths);
+                    Message message = new Message();
+                    message.what = 100;
+                    message.obj = DownloadUtils.urlStr + paths;
+                    upIvHandler.sendMessage(message);
+                } else {
+                    Log.i("isiissis", name + "上传失败");
+                }
+
+
+            }
+        }.start();
+    }
+
+    String host = "https://d9-app.simuyun.com/auth/v2/ocr/faceverify?param=";
+
+    public String getHost(String Ivurl) {
+        JSONObject objects = new JSONObject();
+        try {
+            objects.put("faceUrl", Ivurl);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return host + objects.toString();
+    }
+
+    Handler upIvHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+
+            if (100 == msg.what) {
+                //上传成功后需要进行匹配校验
+                final String ivurl = (String) msg.obj;
+                Log.i("isiissis", "请求匹配url****************************" + getHost(ivurl));
+
+                RequestParams entity = new RequestParams(getHost(ivurl));
+                //数据请求，这里先要设置回到的call接口对象,数据在接口对象的方法中获取
+                x.http().get(entity, new org.xutils.common.Callback.CacheCallback<String>() {
+                    @Override
+                    public void onSuccess(String result) {
+                        try {
+                            JSONObject obj = new JSONObject(result);
+                            JSONObject objresult = obj.getJSONObject("result");
+                            if ("1".equals(objresult.getString("comparePass"))) {//匹配成功
+                                Toast.makeText(MainActivity.this, "人脸匹配成功，你是林功尧", Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(MainActivity.this, "人脸匹配失败，你不是林功尧！", Toast.LENGTH_LONG).show();
+                            }
+
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+
+
+                    }
+
+                    @Override
+                    public void onError(Throwable ex, boolean isOnCallback) {
+
+                    }
+
+                    @Override
+                    public void onCancelled(CancelledException cex) {
+
+                    }
+
+                    @Override
+                    public void onFinished() {
+
+                    }
+
+                    @Override
+                    public boolean onCache(String result) {
+                        return false;
+                    }
+                });
+
+
+
+
+
+//                HttpUtils.sendGetHttpRequest(getHost(ivurl), new HttpCallbackListener() {
+//                    @Override
+//                    public void onFinish(String response) {
+//                        //匹配结果
+//                        Log.i("isiissis", "匹配成功****************************" + ivurl + "*****" + response);
+//
+////                        Message message = new Message();
+////                        message.what = 101;
+////                        message.obj = response;
+////                        PipeiHandler.sendMessage(message);
+//
+//
+//
+//                        HttpUtils http = new HttpUtils();
+//                        http.
+//                    }
+//
+//                    @Override
+//                    public void onError(Exception e) {
+//                        Log.i("isiissis", "匹配失败****************************" + ivurl);
+//                    }
+//                });
+
+            }
+            super.handleMessage(msg);
+
+        }
+    };
+
+    /**
+     * 成功需要弹出显示
+     */
+    Handler PipeiHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            if (101 == msg.what) {
+                String OsTRING = (String) msg.obj;
+                try {
+                    JSONObject obj = new JSONObject(OsTRING);
+                    JSONObject objresult = obj.getJSONObject("result");
+                    if ("1".equals(objresult.getString("comparePass"))) {//匹配成功
+                        Toast.makeText(MainActivity.this, "人脸匹配成功，你是林功尧", Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(MainActivity.this, "人脸匹配失败，你不是林功尧！", Toast.LENGTH_LONG).show();
+                    }
+
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+
+            }
+            super.handleMessage(msg);
+        }
+    };
 }
