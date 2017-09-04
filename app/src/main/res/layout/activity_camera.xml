@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:gravity="center"
+        android:text="请导入您的身份证进行测试"
+        android:textSize="25dp" />
+
+    <ImageView
+        android:id="@+id/select_camram"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:clickable="true"
+        android:scaleType="centerCrop"
+        android:src="@mipmap/cardlist_add_normal" />
+
+    <TextView
+        android:id="@+id/up_camram"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:clickable="true"
+        android:gravity="center"
+        android:padding="10dp"
+        android:text="上传"
+        android:textColor="@color/ycl_white"
+        android:textSize="18dp"
+        android:textStyle="bold"
+        android:background="@color/colorPrimary"/>
+</RelativeLayout>

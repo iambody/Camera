@@ -1,5 +1,6 @@
 package app.camera.com.cameratest;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
@@ -40,7 +41,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
     //    ImageView imageView;
     LinearLayout hsh;
     List<Bitmap> bitmaps = new ArrayList<>();
-
+    String identityUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +50,7 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
         hsh = (LinearLayout) findViewById(R.id.hsh);
-
+        identityUrl = getIntent().getStringExtra("cameraurl");
 
         InitSurface();
 
@@ -130,50 +131,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
 
     }
 
-    boolean isPreview;
-
-
-//    class MyAdapter extends PagerAdapter {
-//        List<Bitmap> bitmaps = new ArrayList<>();
-//
-//        public MyAdapter(List<Bitmap> bitmaps) {
-//            this.bitmaps = bitmaps;
-//        }
-//
-//        @Override
-//        public int getCount() {
-//            return bitmaps.size();
-//        }
-//
-//        public void freash(Bitmap data) {
-//            bitmaps.add(data);
-//            this.notifyDataSetChanged();
-//        }
-//
-//        @Override
-//        public boolean isViewFromObject(View view, Object object) {
-//            return view==object;
-//        }
-//
-//        @Override
-//        public Object instantiateItem(ViewGroup container, int position) {
-//            ImageView image=new ImageView(MainActivity.this);
-//
-//            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(100,100);
-//            p.setMargins(20,20,20,20);
-//            image.setLayoutParams(p);
-//            image.setImageBitmap(bitmaps.get(position));
-//            container.addView(image);
-//            return image;
-//        }
-//
-//        @Override
-//        public void destroyItem(ViewGroup container, int position, Object object) {
-////            super.destroyItem(container, position, object);
-//            container.removeView((View) object);
-//        }
-//
-//    }
 
     void getPreViewImage() {
         camera.setOneShotPreviewCallback(new Camera.PreviewCallback() {
@@ -306,12 +263,13 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
         }.start();
     }
 
-    String host = "https://d9-app.simuyun.com/auth/v2/ocr/faceverify?param=";
+    String host = "https://d9-app.simuyun.com/auth/v2/ocr/facecompare?param=";
 
     public String getHost(String Ivurl) {
         JSONObject objects = new JSONObject();
         try {
-            objects.put("faceUrl", Ivurl);
+            objects.put("faceUrl1", identityUrl);
+            objects.put("faceUrl2", Ivurl);
 
         } catch (JSONException e) {
             e.printStackTrace();
@@ -336,10 +294,17 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                         try {
                             JSONObject obj = new JSONObject(result);
                             JSONObject objresult = obj.getJSONObject("result");
-                            if ("1".equals(objresult.getString("comparePass"))) {//匹配成功
-                                Toast.makeText(MainActivity.this, "人脸匹配成功，你是林功尧", Toast.LENGTH_LONG).show();
+                            if ("1".equals(objresult.getString("ismatch"))) {//匹配成功
+                                try {
+                                    Toast.makeText(MainActivity.this, "人脸匹配成功;匹配度为：" + String.valueOf(objresult.getString("similarity")), Toast.LENGTH_LONG).show();
+                                    MainActivity.this.startActivity(new Intent(MainActivity.this, ResultAc.class));
+
+                                } catch (Exception e) {
+                                    Toast.makeText(MainActivity.this, "人脸匹配成功", Toast.LENGTH_LONG).show();
+                                    MainActivity.this.startActivity(new Intent(MainActivity.this, ResultAc.class));
+                                }
                             } else {
-                                Toast.makeText(MainActivity.this, "人脸匹配失败，你不是林功尧！", Toast.LENGTH_LONG).show();
+                                Toast.makeText(MainActivity.this, "人脸匹配失败", Toast.LENGTH_LONG).show();
                             }
 
 
@@ -371,32 +336,6 @@ public class MainActivity extends AppCompatActivity implements SurfaceHolder.Cal
                     }
                 });
 
-
-
-
-
-//                HttpUtils.sendGetHttpRequest(getHost(ivurl), new HttpCallbackListener() {
-//                    @Override
-//                    public void onFinish(String response) {
-//                        //匹配结果
-//                        Log.i("isiissis", "匹配成功****************************" + ivurl + "*****" + response);
-//
-////                        Message message = new Message();
-////                        message.what = 101;
-////                        message.obj = response;
-////                        PipeiHandler.sendMessage(message);
-//
-//
-//
-//                        HttpUtils http = new HttpUtils();
-//                        http.
-//                    }
-//
-//                    @Override
-//                    public void onError(Exception e) {
-//                        Log.i("isiissis", "匹配失败****************************" + ivurl);
-//                    }
-//                });
 
             }
             super.handleMessage(msg);
